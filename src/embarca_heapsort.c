@@ -1,30 +1,15 @@
 /*
- * Estrategia 2 do catalogo: ordenacao + varredura de vizinhos
- * Escolhida para a EMBARCA (limite: 256 bytes de memoria extra).
+ * Estrategia 2: ordenacao in-place (heapsort) + varredura de vizinhos. Cliente: EMBARCA.
  *
- * Ideia em 3 linhas:
- *   1. Ordena o vetor NO PROPRIO LUGAR com heapsort (sem vetor auxiliar).
- *   2. Depois de ordenado, valores iguais ficam lado a lado.
- *   3. Varre o vetor uma vez e copia so o primeiro de cada grupo para o inicio.
- *
- * Por que heapsort e nao quicksort/mergesort?
- *   - mergesort precisa de vetor auxiliar O(n)      -> estoura os 256 bytes
- *   - quicksort e recursivo: pilha O(log n) no medio, O(n) no pior caso
- *   - heapsort e iterativo, usa so algumas variaveis: espaco O(1) e
- *     tempo O(n log n) garantido
- *
- * Memoria extra: so as variaveis locais (indices e uma leitura temporaria).
- * Nada de malloc: heap = 0 bytes.
- *
- * Complexidade: tempo Theta(n log n) sempre (sem pior caso quadratico);
- * pilha O(1) (sem recursao); heap 0 B. Atende a Embarca (<= 256 B para todo n).
- * Preco: mais lento que o bitmap; nao estavel (irrelevante: iguais sao identicos).
+ * Ordena v sem vetor auxiliar; os iguais ficam vizinhos; uma varredura copia o
+ * primeiro de cada grupo para o inicio.
+ * Por que heapsort: mergesort exige vetor auxiliar O(n); quicksort recursivo gasta
+ * pilha O(log n) (O(n) no pior caso); heapsort e iterativo, in-place e Theta(n log n).
+ * Custo: tempo Theta(n log n) sempre, pilha O(1), heap 0 B (limite da Embarca: 256 B).
  */
 #include "embarca_heapsort.h"
 
-/* "Peneira" v[i] para baixo ate o lugar certo no heap maximo v[0..n).
- * Filhos de i: 2i+1 e 2i+2. Custo O(log n). Iterativa de proposito:
- * recursao gastaria pilha e arriscaria os 256 B. */
+/* Desce v[i] no heap maximo v[0..n) (filhos de i: 2i+1 e 2i+2). O(log n), sem recursao. */
 static void peneirar(uint16_t *v, size_t i, size_t n)
 {
     uint16_t x = v[i];                      /* valor que vai descer */
@@ -42,16 +27,15 @@ static void peneirar(uint16_t *v, size_t i, size_t n)
 
 size_t embarca_dedup(uint16_t *v, size_t n)
 {
-    /* Borda (Secao 6): vazio ou 1 elemento. Nao toca em v (pode ser NULL se n = 0). */
+    /* Borda: vazio ou 1 elemento (v pode ser NULL se n = 0). */
     if (n < 2) return n;
 
-    /* Passo 1a: monta o heap maximo de baixo para cima (de n/2-1 a 0; o resto sao
-     * folhas). "i-- > 0" evita o underflow do size_t. Custo O(n), nao n log n. */
+    /* 1a: monta o heap maximo (nos n/2-1..0; o resto sao folhas): O(n).
+     * "i-- > 0" evita underflow do size_t. */
     for (size_t i = n / 2; i-- > 0; )
         peneirar(v, i, n);
 
-    /* Passo 1b: leva o maior (v[0]) para o fim, n-1 vezes: O(n log n).
-     * Invariante: v[fim+1..n) ja esta ordenado e e >= v[0..fim]. */
+    /* 1b: leva o maior para o fim, n-1 vezes: O(n log n). Invariante: v[fim+1..n) ordenado. */
     for (size_t fim = n - 1; fim > 0; fim--) {
         uint16_t maior = v[0];
         v[0] = v[fim];
@@ -59,9 +43,8 @@ size_t embarca_dedup(uint16_t *v, size_t n)
         peneirar(v, 0, fim);                /* conserta o heap sem o maior */
     }
 
-    /* Passo 2/3: varredura, Theta(n). k = ultimo unico guardado. Invariante:
-     * v[0..k] sao os unicos ja vistos e k <= i, entao v[++k] nunca apaga o que
-     * falta ler. Depois de k+1 sobra lixo (so a quantidade e garantida). */
+    /* 2/3: varredura Theta(n). Invariante: v[0..k] = unicos ja vistos e k <= i
+     * (nada e sobrescrito antes de ser lido). */
     size_t k = 0;
     for (size_t i = 1; i < n; i++)
         if (v[i] != v[k])

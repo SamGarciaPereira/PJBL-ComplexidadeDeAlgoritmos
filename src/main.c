@@ -1,20 +1,14 @@
 /*
- * main.c - rotina de demonstracao, benchmarks e casos de teste obrigatorios.
+ * main.c - demonstracao, benchmark e testes obrigatorios (Secao 8).
  *
- * Compilar:  gcc -O2 -std=gnu11 -Isrc -o main src/main.c src/embarca_heapsort.c \
- *                 src/datacenter_bitmap.c src/instrumentacao.c
- * Rodar:     ./main                (imprime os resultados)
- *            ./main resultados.csv (imprime e grava as medicoes no CSV)
+ * Compilar: gcc -O2 -std=gnu11 -Isrc -o main src/main.c src/embarca_heapsort.c \
+ *                src/datacenter_bitmap.c src/instrumentacao.c
+ * Rodar:    ./main [resultados.csv]    (o CSV e opcional)
  *
- * 1. Corretude: casos pequenos (n <= 10), com e sem duplicatas, vazio.
- * 2. Demonstracao: roda as duas estrategias para n = 10^3, 10^5 e 10^7 e
- *    imprime tempo e memoria medidos.
- * 3. Limites: Embarca <= 256 bytes extras em todos os n;
- *             Datacenter com n = 10^7 em menos de 2 segundos.
- *
- * Secao 8: corretude -> testes_corretude(); memoria e tempo -> bloco "Limites".
- * Indice 0 de "estrategias" = Embarca, 1 = Datacenter (os limites dependem disso).
- * Retorna 0 so se tudo passar.
+ * Roda: corretude (n <= 10, com/sem duplicatas, vazio); as 2 estrategias em
+ * n = 10^3, 10^5 e 10^7 (tempo e memoria); e os limites (Embarca <= 256 B,
+ * Datacenter < 2 s em 10^7). Retorna 0 so se tudo passar.
+ * estrategias[0] = Embarca, estrategias[1] = Datacenter (os limites dependem da ordem).
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,8 +35,7 @@ static const Estrategia estrategias[] = {
 
 /* ---------- 1. Corretude (casos pequenos, verificaveis a mao) ---------- */
 
-/* Roda f sobre uma copia de entrada[0..n) e compara com o esperado.
- * Compara como conjunto: Embarca devolve ordenado, Datacenter na ordem de chegada. */
+/* Roda f numa copia da entrada e compara com o esperado como conjunto (a ordem da saida difere). */
 static int caso(FuncaoDedup f, const uint16_t *entrada, size_t n,
                 const uint16_t *esperado, size_t m)
 {
@@ -117,8 +110,7 @@ int main(int argc, char **argv)
                      "pilha_pico_bytes,memoria_extra_bytes,n_unicos\n");
     }
 
-    /* O vetor de entrada ("ja residente na memoria do sensor") nao conta
-     * como memoria extra: usa malloc comum, fora dos contadores. */
+    /* Vetor de entrada: malloc comum, fora dos contadores (nao e memoria extra). */
     uint16_t *base     = malloc(n_max * sizeof *base);
     uint16_t *trabalho = malloc(n_max * sizeof *trabalho);
     if (!base || !trabalho) { fprintf(stderr, "sem memoria\n"); return 1; }
@@ -142,8 +134,7 @@ int main(int argc, char **argv)
             size_t heap_max = 0, pilha_max = 0, unicos = 0;
 
             for (int r = 0; r < REPETICOES; r++) {
-                /* Copia nova a cada medicao (as estrategias alteram o vetor); tempo e
-                 * memoria em chamadas separadas para a pintura nao entrar no tempo. */
+                /* Copia nova a cada medicao (a dedup altera o vetor); tempo e memoria separados. */
                 size_t heap = 0;
 
                 memcpy(trabalho, base, n * sizeof *base);    /* copia fresca */
@@ -176,8 +167,7 @@ int main(int argc, char **argv)
                    n, estrategias[e].nome, mediana, maximo,
                    heap_max, pilha_max, extra);
 
-            /* Embarca: so a memoria reprova. Datacenter: pior tempo (nao a mediana),
-             * so em n = 10^7. */
+            /* Embarca: so memoria reprova. Datacenter: pior rodada, so em n = 10^7. */
             if (e == 0 && extra > LIMITE_EMBARCA) embarca_ok = 0;
             if (e == 1 && n == n_max && maximo >= LIMITE_DATACENTER) datacenter_ok = 0;
         }

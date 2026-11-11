@@ -1,22 +1,10 @@
 /*
- * Estrategia 5 do catalogo: bitmap (vetor de bits) sobre o dominio conhecido
- * Escolhida para o DATACENTER (limite: n = 10^7 em menos de 2 segundos).
+ * Estrategia 5: bitmap sobre o dominio conhecido (0..65535). Cliente: DATACENTER.
  *
- * Ideia em 3 linhas:
- *   1. Cada leitura vale de 0 a 65535, entao existem so 65536 valores possiveis.
- *   2. Guardamos 1 bit por valor possivel: "este valor ja apareceu?"
- *      65536 bits = 8192 bytes, qualquer que seja n.
- *   3. Percorremos o vetor uma unica vez: se o bit do valor e 0, ele e novo
- *      (marca o bit e guarda o valor); se e 1, e repetido (ignora).
- *
- * Tempo: O(n), cada leitura custa um teste de bit (tempo constante).
- * Espaco extra: 8192 bytes fixos (O(1) em relacao a n) - cabe no Datacenter,
- * que nao tem limite de memoria, e NAO caberia na Embarca (limite 256 bytes).
- * O resultado mantem a ordem de chegada das leituras.
- *
- * Complexidade: tempo Theta(n) sempre; heap 8192 B fixos; pilha O(1).
- * So funciona porque o dominio (16 bits) e pequeno: com 32 bits seriam 512 MB.
- * Atende o Datacenter (10^7 em < 2 s) e e EXATO, ao contrario do Bloom.
+ * 1 bit por valor possivel (65536 bits = 8192 B): bit 0 = valor novo (marca e guarda),
+ * bit 1 = repetido (ignora). Uma passada; mantem a ordem de chegada. Resultado exato.
+ * Custo: tempo Theta(n) sempre, heap 8192 B fixos, pilha O(1).
+ * So serve porque o dominio e pequeno (32 bits seriam 512 MB); nao cabe na Embarca (256 B).
  */
 #include "datacenter_bitmap.h"
 #include "instrumentacao.h"
@@ -26,11 +14,10 @@
 
 size_t datacenter_dedup(uint16_t *v, size_t n)
 {
-    /* inst_calloc (nao calloc): assim o heap entra na instrumentacao. */
+    /* inst_calloc: conta o heap na instrumentacao. */
     uint8_t *visto = inst_calloc(BYTES_DO_BITMAP);   /* tudo zerado */
 
-    /* Invariante: v[0..k) = unicos ja vistos (ordem de chegada) e k <= i,
-     * entao gravar em v[k] e seguro e dispensa vetor de saida. */
+    /* Invariante: v[0..k) = unicos ja vistos e k <= i (gravar em v[k] e seguro). */
     size_t k = 0;                                    /* quantos unicos ate agora */
     for (size_t i = 0; i < n; i++) {
         uint16_t x    = v[i];

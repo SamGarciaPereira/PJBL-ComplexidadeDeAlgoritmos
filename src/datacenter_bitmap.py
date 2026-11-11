@@ -1,20 +1,12 @@
 """
-Estrategia 5 do catalogo: bitmap (vetor de bits) sobre o dominio conhecido.
-Versao em Python + NumPy para o DATACENTER (limite: n = 10^7 em menos de 2 segundos).
-A Embarca continua em C (src/embarca_heapsort.c), como o enunciado recomenda.
+Estrategia 5 (bitmap sobre o dominio 0..65535) em Python + NumPy. Cliente: DATACENTER.
+A Embarca continua em C (src/embarca_heapsort.c).
 
-Ideia em 3 linhas:
-  1. Cada leitura vale de 0 a 65535: existem so 65536 valores possiveis.
-  2. Uma tabela com uma casa por valor possivel diz "este valor ja apareceu?".
-     Marcar todas as leituras de uma vez (visto[v] = True) faz o trabalho do laco.
-  3. Os valores marcados sao os unicos.
+visto[v] = True marca todas as leituras de uma vez; os indices marcados sao os unicos.
+Tempo O(n); espaco: tabela de 65536 casas. Saida em ordem CRESCENTE (a versao em C
+mantem a ordem de chegada; o enunciado nao exige ordem).
 
-Tempo: O(n) (a marcacao roda em C dentro do NumPy). Espaco extra: tabela de 65536
-casas, independente de n. Diferenca para a versao em C: a saida vem em ORDEM
-CRESCENTE (o enunciado nao exige ordem de chegada).
-
-Requisito:  pip install numpy
-Rodar:      python src/datacenter_bitmap.py
+Requisito: pip install numpy.   Rodar: python src/datacenter_bitmap.py
 """
 import statistics
 import sys

@@ -1,25 +1,14 @@
 /*
- * instrumentacao.c
- * Como cada medida e feita:
+ * instrumentacao.c - medicao manual (sem profiler).
  *
- * TEMPO   : relogio monotonico (clock_gettime) antes e depois da chamada.
+ * TEMPO : clock_gettime(CLOCK_MONOTONIC) antes e depois da chamada.
+ * HEAP  : inst_calloc/inst_free somam e subtraem os bytes; o maximo e o pico.
+ * PILHA : "pintura". Pinta 4096 B da pilha com 0xAA, chama a funcao e ve ate onde a
+ *         tinta foi apagada: pilha = (referencia) - (ponto mais fundo tocado).
  *
- * HEAP    : inst_calloc/inst_free somam e subtraem os bytes pedidos.
- *           O maior valor da soma durante a chamada e o "pico de heap".
- *
- * PILHA   : tecnica da "pintura". Antes de chamar a funcao, pintamos uma
- *           area de 4096 bytes da pilha (logo abaixo de onde a funcao vai
- *           rodar) com o valor 0xAA. Depois da chamada, olhamos ate onde a
- *           tinta foi apagada: o ponto mais fundo que a funcao tocou.
- *           A pilha cresce para enderecos menores, entao
- *           pilha usada = (endereco de referencia) - (ponto mais fundo).
- *           O endereco de referencia fica no quadro desta funcao, logo
- *           acima do quadro da funcao medida: o numero e um LIMITE SUPERIOR
- *           (pode sobrar algumas dezenas de bytes, nunca faltar).
- *
- * LIMITACOES (declarar no relatorio): a pilha e limite superior, depende de
- * plataforma/compilador (71 B Linux/GCC 13; 159 B Windows/MinGW GCC 16) e satura
- * em ~4096 B; o heap so conta o que passa por inst_calloc.
+ * Limitacoes: a pilha e limite superior (inclui o quadro de inst_medir_memoria),
+ * depende de plataforma/compilador (159 B em Windows/MinGW GCC 16.1 -O2) e satura em
+ * ~4096 B; o heap so conta o que passa por inst_calloc.
  */
 #define _GNU_SOURCE
 #include "instrumentacao.h"
@@ -71,14 +60,12 @@ double inst_medir_tempo(FuncaoDedup f, uint16_t *v, size_t n, size_t *n_unicos)
 
 static volatile unsigned char *area_pintada;   /* inicio da area pintada */
 
-/* Pinta TAM_PINTURA bytes da pilha. "noinline" garante que a area fica
- * exatamente onde a funcao medida vai rodar logo depois. */
+/* Pinta a pilha. noinline: a area fica onde a funcao medida vai rodar em seguida. */
 __attribute__((noinline)) static void pintar_pilha(void)
 {
     volatile unsigned char area[TAM_PINTURA];
     for (size_t i = 0; i < TAM_PINTURA; i++) area[i] = TINTA;
-    /* Guardar o endereco de uma variavel local e proposital: so queremos o
-     * ENDERECO da area (nunca o conteudo) para olhar a pilha depois. */
+    /* Guardar o endereco de um local e proposital: so o endereco importa. */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdangling-pointer"
     area_pintada = area;
